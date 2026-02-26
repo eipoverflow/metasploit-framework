@@ -10,8 +10,6 @@ module Msf::Util::EXE::Windows::X64
   module ClassMethods
     # to_win64pe
     #
-    # Construct a Windows x64 PE executable with the given shellcode.
-    #
     # @param framework  [Msf::Framework]  The framework of you want to use
     # @param code       [String]
     # @param opts       [Hash]
