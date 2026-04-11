@@ -1,3 +1,9 @@
+require 'erb'
+require 'metasploit/framework/compiler/windows'
+require 'metasploit/framework/compiler/mingw'
+require 'pry'
+require 'pry-byebug'
+
 # -*- coding: binary -*-
 module Msf::Util::EXE::Windows::X64
   include Msf::Util::EXE::Common
@@ -21,6 +27,7 @@ module Msf::Util::EXE::Windows::X64
         path, exe = Msf::Obfuscation::ExeTemplate.exe_template_compile(framework, opts)
       end
       set_template_default(opts, exe, path)
+
 
       # Try to inject code into executable by adding a section without affecting executable behavior
       if opts[:inject]
