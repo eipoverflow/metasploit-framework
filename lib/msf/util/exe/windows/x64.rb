@@ -13,6 +13,7 @@ module Msf::Util::EXE::Windows::X64
   end
 
   module ClassMethods
+
     # to_win64pe
     #
     # @param framework  [Msf::Framework]  The framework of you want to use
