@@ -28,7 +28,6 @@ module Msf::Util::EXE::Windows::X64
       end
       set_template_default(opts, exe, path)
 
-
       # Try to inject code into executable by adding a section without affecting executable behavior
       if opts[:inject]
         injector = Msf::Exe::SegmentInjector.new({
