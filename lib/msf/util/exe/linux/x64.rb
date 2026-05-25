@@ -1,8 +1,4 @@
 # -*- coding: binary -*-
-require 'msf/core/obfuscation/exe_template'
-require 'pry'
-require 'pry-byebug'
-
 module Msf::Util::EXE::Linux::X64
   include Msf::Util::EXE::Linux::Common
 
@@ -20,8 +16,6 @@ module Msf::Util::EXE::Linux::X64
     # @option opts [String] :template
     # @return [String] Returns an elf
     def to_linux_x64_elf(framework, code, opts = {})
-      binding.pry
-      return Msf::Obfuscation::ExeTemplate.exe_template_x64_elf(framework, code, opts) if opts[:dynamic_template]
       to_exe_elf(framework, opts, 'template_x64_linux.bin', code)
     end
 
