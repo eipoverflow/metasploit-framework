@@ -1,6 +1,4 @@
 # -*- coding: binary -*-
-
-require 'metasm'
 require 'metasploit/framework/compiler/utils'
 require 'metasploit/framework/compiler/headers/windows'
 require 'rex/peparsey'
@@ -138,8 +136,10 @@ module Metasploit
             section_size = @optional_header[:SectionHeaders].last[:SizeOfRawData]
             section_offset = @optional_header[:SectionHeaders].last[:PointerToRawData]
             
+           # if @optional_header[:SectionHeaders].last[:Name].strip == '.text'
+           #   binding.pry
+           # end
             @sections << { :name => @optional_header[:SectionHeaders].last[:Name].strip, :data => raw.byteslice(section_offset, section_size) }
-
           end
         end
         
@@ -241,19 +241,13 @@ module Metasploit
           patch_checksum(out)
         end
 
-        
-        # TODO: the metasm PE doesn't have .idata section, which is not a problem it but imo looks kinda sus - add either fake idata section or .idata section based on existing import data
-        def add_import_section
 
-        end
-
-        def build_from_c(raw)
+        def build
           # cpu     = Metasm::X86_64.new
           # headers = Compiler::Headers::Windows.new
           # source  = Compiler::Utils.normalize_code(c_source, headers)
           # pe      = Metasm::PE.compile_c(cpu, source)
           # raw     = pe.encode
-          load_pe(raw)
           
           # Do the magic
           #----------------

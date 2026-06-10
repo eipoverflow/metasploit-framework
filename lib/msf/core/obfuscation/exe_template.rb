@@ -2,8 +2,6 @@ require 'erb'
 require 'metasploit/framework/compiler/windows'
 require 'metasploit/framework/compiler/linux'
 require 'metasploit/framework/compiler/pe'
-require 'pry'
-require 'pry-byebug'
 
 module Msf::Obfuscation::ExeTemplate
   
@@ -14,40 +12,33 @@ module Msf::Obfuscation::ExeTemplate
     else  
       source_c = pe_x64_template(code)
     end
-    pe = Metasploit::Framework::Compiler::Windows.compile_c(source_c, :exe, Metasm::X86_64.new)
-    Metasploit::Framework::Compiler::Pe.new.build_from_c(pe)
+    
+    tmp =  Tempfile.new(["payload_win_x64"])
+    
+    compile_opts = {
+        f_name: tmp.path,
+        strip_symbols: true,
+        compile_options: ' -masm=intel -w -mwindows '
+      }
+    
+    comp_obj = Metasploit::Framework::Compiler::Mingw::X64.new(compile_opts)
+    comp_obj.compile_c(source_c)
+    pe = File.binread("#{tmp.path}.exe")
+
+    pe_parser = Metasploit::Framework::Compiler::Pe.new
+    pe_parser.load_pe(pe)
+
+    pe_parser.build
   end
 
   def self.exe_template_x64_dll(framework, code, opts) 
-    if opts[:dynamic_obfuscation]
-      source_c = dll_x64_template_obfus(code)
-    else
-      source_c = dll_x64_template(code) 
-    end
+    source_c = dll_x64_template(code) 
 
     Metasploit::Framework::Compiler::Windows.compile_c(source_c, :dll, Metasm::X86_64.new)
   end
 
-  def self.exe_template_x64_elf(framework, code, opts)
-    source_c = elf_x64_template(code)
-    elf = Metasploit::Framework::Compiler::Linux.compile_c(source_c ,Metasm::X86_64.new)
-    return elf
-  end
-  
-  def self.exe_template_x64_elf_so(framework, code, opts)
-  end
-
   private
 
-  def self.elf_x64_template(code)
-    template_path = File.join(Msf::Config.data_directory, 'templates', 'src', 'elf','exe','template_x64_linux.erb')
-
-    payload_length = code.length
-    payload = code.bytes.map { |b| '\\x%02x' % b }.join
-    
-    template = ERB.new(File.read(template_path))
-    template.result(binding)
-  end
 
   def self.dll_x64_template(code)
     template_path = File.join(Msf::Config.data_directory, 'templates','src','pe','dll', 'template_x64_windows.erb')
@@ -66,6 +57,7 @@ module Msf::Obfuscation::ExeTemplate
     template_path = File.join(Msf::Config.data_directory, 'templates','src','pe','exe', 'template_x64_windows.erb')
 
     payload_length = code.length
+    random_sleep = (24000..48000).to_a.sample
     payload = code.bytes.map { |b| '\\x%02x' % b }.join
 
     template = ERB.new(File.read(template_path))
@@ -87,7 +79,9 @@ module Msf::Obfuscation::ExeTemplate
   end
 
   def self.build_xor_mac_vars(code)
-    encryption_rounds = rand(2...10)
+    #TODO: remove xor encryption as encoding seems to be sufficient and it actually breaks the decoding routine when including obfuscator.h
+
+    encryption_rounds = 0
     xor_keys = encryption_rounds.times.map { rand(256) }
 
     control_bytes = [rand(256)]

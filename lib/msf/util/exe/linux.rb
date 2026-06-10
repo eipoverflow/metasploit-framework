@@ -28,7 +28,6 @@ module Msf::Util::EXE::Linux
 
   module ClassMethods
     def to_executable_linux(framework, arch, code, fmt = 'elf', opts = {})
-      binding.pry      
       elf_formats = ['elf','elf-so']
       elf_fmt = 'elf'
       elf_fmt = fmt if elf_formats.include?(fmt)
