@@ -1,6 +1,5 @@
 require 'erb'
 require 'metasploit/framework/compiler/windows'
-require 'metasploit/framework/compiler/linux'
 require 'metasploit/framework/compiler/pe'
 
 module Msf::Obfuscation::ExeTemplate

