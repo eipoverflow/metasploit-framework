@@ -1,8 +1,4 @@
 # -*- coding: binary -*-
-
-require 'pry'
-require 'pry-byebug'
-
 module Msf::Util::EXE::Linux
   
   include Msf::Util::EXE::Linux::Common
@@ -28,6 +24,7 @@ module Msf::Util::EXE::Linux
 
   module ClassMethods
     def to_executable_linux(framework, arch, code, fmt = 'elf', opts = {})
+      
       elf_formats = ['elf','elf-so']
       elf_fmt = 'elf'
       elf_fmt = fmt if elf_formats.include?(fmt)
