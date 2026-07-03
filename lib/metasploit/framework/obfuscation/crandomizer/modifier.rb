@@ -38,6 +38,7 @@ module Metasploit
           # return [void]
           def modify_if(s)
             new_if_statements = []
+
             s.bthen.statements.each do |stmt|
               modify_nested_blocks(stmt)
               new_if_statements.concat(get_fake_statement)

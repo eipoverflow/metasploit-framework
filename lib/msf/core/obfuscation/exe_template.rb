@@ -1,6 +1,8 @@
 require 'erb'
 require 'metasploit/framework/compiler/windows'
 require 'metasploit/framework/compiler/pe'
+require 'pry'
+require 'pry-byebug'
 
 module Msf::Obfuscation::ExeTemplate
   
@@ -72,6 +74,7 @@ module Msf::Obfuscation::ExeTemplate
     encrypted_payload = v[:encrypted_payload]
     encoded_payload_length = v[:encoded_payload_length]
     control_bytes = v[:control_bytes]
+    binding.pry
 
     template = ERB.new(File.read(template_path))
     template.result(binding)
