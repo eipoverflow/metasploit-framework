@@ -14,7 +14,7 @@ module Msf::Obfuscation::ExeTemplate
       source_c = pe_x64_template(code)
     end
     
-    tmp =  Tempfile.new(["payload_win_x64"])
+    tmp = Tempfile.new(["payload_win_x64"])
     
     compile_opts = {
         f_name: tmp.path,
@@ -74,7 +74,6 @@ module Msf::Obfuscation::ExeTemplate
     encrypted_payload = v[:encrypted_payload]
     encoded_payload_length = v[:encoded_payload_length]
     control_bytes = v[:control_bytes]
-    binding.pry
 
     template = ERB.new(File.read(template_path))
     template.result(binding)
