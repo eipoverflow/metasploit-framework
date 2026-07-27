@@ -218,12 +218,12 @@ module Msf
             end
            
             # Add dynamic templates
-            if dynamic_template.nil? && mod_with_opts.datastore['EXE::Template::Dynamic::Enabled']
-              dynamic_template = mod_with_opts.datastore['EXE::Template::Dynamic::Enabled']
+            if dynamic_template.nil? && mod_with_opts.datastore['EXE::DynamicTemplate']
+              dynamic_template = mod_with_opts.datastore['EXE::DynamicTemplate']
             end
             
-            if !dynamic_template.nil? && mod_with_opts.datastore['EXE::Template::Dynamic::Obfuscation']
-              template_obfuscation = mod_with_opts.datastore['EXE::Template::Dynamic::Obfuscation']
+            if !dynamic_template.nil? && mod_with_opts.datastore['EXE::DynamicTemplate::Obfuscation']
+              template_obfuscation = mod_with_opts.datastore['EXE::DynamicTemplate::Obfuscation']
             end
 
 

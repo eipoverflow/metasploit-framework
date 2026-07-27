@@ -151,8 +151,8 @@ module Msf
         [
           OptString.new('WORKSPACE', [ false, "Specify the workspace for this module" ]),
           OptBool.new('VERBOSE',     [ false, 'Enable detailed status messages', false ]),
-          OptBool.new('EXE::Template::Dynamic::Enabled', [false, 'Use dynamic template when generating the executable', false]),
-          OptBool.new('EXE::Template::Dynamic::Obfuscation', [false, 'Use JIT obfuscation when generating the executable', false]),
+          OptBool.new('EXE::DynamicTemplate', [false, 'Use dynamic template when generating the executable', false]),
+          OptBool.new('EXE::DynamicTemplate::Obfuscation', [false, 'Use JIT obfuscation when generating the executable', false]),
         ], Msf::Module)
 
     end
