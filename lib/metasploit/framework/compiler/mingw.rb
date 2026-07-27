@@ -8,6 +8,11 @@ module Metasploit
 
         INCLUDE_DIR = File.join(Msf::Config.data_directory, 'headers', 'windows', 'c_payload_util')
         OPTIMIZATION_FLAGS = [ 'Os', 'O0', 'O1', 'O2', 'O3', 'Og' ]
+        
+        def get_source_file
+          return "#{self.file_name}.cpp" if @cpp_exe
+          "#{self.file_name}.c"
+        end
 
         def compile_c(src)
           cmd = build_cmd(src)
@@ -21,7 +26,8 @@ module Metasploit
         end
 
         def build_cmd(src)
-          src_file = "#{self.file_name}.c"
+          src_file = get_source_file
+
           exe_file = "#{self.file_name}.exe"
 
           cmd = ''
@@ -60,7 +66,7 @@ module Metasploit
         end
 
         def cleanup_files
-          src_file = "#{self.file_name}.c"
+          src_file = get_source_file
           exe_file = "#{self.file_name}.exe"
 
           unless self.keep_src
@@ -90,6 +96,7 @@ module Metasploit
             @opt_lvl = opts[:opt_lvl]
             @include_dirs = opts[:include_dirs] || []
             @mingw_bin = MINGW_X86
+            @cpp_exe = opts[:cpp_exe]
           end
 
           def self.available?
@@ -113,6 +120,7 @@ module Metasploit
             @opt_lvl = opts[:opt_lvl]
             @include_dirs = opts[:include_dirs] || []
             @mingw_bin = MINGW_X64
+            @cpp_exe = opts[:cpp_exe]
           end
 
           def self.available?

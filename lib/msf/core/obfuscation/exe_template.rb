@@ -1,8 +1,6 @@
 require 'erb'
 require 'metasploit/framework/compiler/windows'
 require 'metasploit/framework/compiler/pe'
-require 'pry'
-require 'pry-byebug'
 
 module Msf::Obfuscation::ExeTemplate
   
@@ -18,8 +16,9 @@ module Msf::Obfuscation::ExeTemplate
     
     compile_opts = {
         f_name: tmp.path,
+        cpp_exe:true,
         strip_symbols: true,
-        compile_options: ' -masm=intel -w -mwindows '
+        compile_options: ' -masm=intel -w -mwindows -lstdc++ '
       }
     
     comp_obj = Metasploit::Framework::Compiler::Mingw::X64.new(compile_opts)
@@ -68,45 +67,24 @@ module Msf::Obfuscation::ExeTemplate
   def self.pe_x64_template_obfus(code)
     template_path = File.join(Msf::Config.data_directory, 'templates', 'src', 'pe','exe', 'template_x64_windows_xor_mac.erb')
 
-    v = build_xor_mac_vars(code)
-    encryption_rounds = v[:encryption_rounds]
-    encrypted_payload_length = v[:encrypted_payload_length]
-    encrypted_payload = v[:encrypted_payload]
+    v = build_mac_vars(code)
     encoded_payload_length = v[:encoded_payload_length]
-    control_bytes = v[:control_bytes]
+
+    payload_length = code.length; 
+    encoded_payload = v[:encoded_payload]
 
     template = ERB.new(File.read(template_path))
     template.result(binding)
   end
 
-  def self.build_xor_mac_vars(code)
-    #TODO: remove xor encryption as encoding seems to be sufficient and it actually breaks the decoding routine when including obfuscator.h
-
-    encryption_rounds = 0
-    xor_keys = encryption_rounds.times.map { rand(256) }
-
-    control_bytes = [rand(256)]
-    encryption_rounds.times do |i|
-      control_bytes.append(control_bytes.last ^ xor_keys[i])
-      code = code.bytes.map { |b| b ^ xor_keys[i] }.pack('C*')
-    end
-
-    code.prepend(control_bytes.last.chr)
-    control_bytes = control_bytes.reverse.drop(1)
-
-    encrypted_payload_length = code.bytesize
-    encrypted_payload = mac_obfluscate(code)
-    encoded_payload_length = encrypted_payload.length
-    encrypted_payload = encrypted_payload.map { |s| s + "\0" }.join.bytes.map { |b| '\\x%02X' % b }.join
-    control_bytes = control_bytes.map { |b| '\\x%02x' % b }.join
+  def self.build_mac_vars(code)
+    encoded_payload = mac_obfluscate(code)
+    encoded_payload_length = encoded_payload.length
+    encoded_payload = encoded_payload.map { |s| s + "\0" }.join.bytes.map { |b| '\\x%02X' % b }.join
 
     {
-      code: code,
-      encryption_rounds: encryption_rounds,
-      encrypted_payload_length: encrypted_payload_length,
-      encrypted_payload: encrypted_payload,
       encoded_payload_length: encoded_payload_length,
-      control_bytes: control_bytes
+      encoded_payload: encoded_payload,
     }
   end
 
