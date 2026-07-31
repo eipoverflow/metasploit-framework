@@ -18,17 +18,13 @@ module Msf::Obfuscation::ExeTemplate
         f_name: tmp.path,
         cpp_exe:true,
         strip_symbols: true,
-        compile_options: ' -masm=intel -w -mwindows -lstdc++ '
+        compile_options: ' -masm=intel -w -mwindows -lstdc++ -static '
       }
     
     comp_obj = Metasploit::Framework::Compiler::Mingw::X64.new(compile_opts)
     comp_obj.compile_c(source_c)
-    pe = File.binread("#{tmp.path}.exe")
+    File.binread("#{tmp.path}.exe")
 
-    pe_parser = Metasploit::Framework::Compiler::Pe.new
-    pe_parser.load_pe(pe)
-
-    pe_parser.build
   end
 
   def self.exe_template_x64_dll(framework, code, opts) 
@@ -57,6 +53,7 @@ module Msf::Obfuscation::ExeTemplate
     template_path = File.join(Msf::Config.data_directory, 'templates','src','pe','exe', 'template_x64_windows.erb')
 
     payload_length = code.length
+    section_name = "rsc"
     random_sleep = (24000..48000).to_a.sample
     payload = code.bytes.map { |b| '\\x%02x' % b }.join
 

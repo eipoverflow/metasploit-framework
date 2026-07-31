@@ -91,7 +91,7 @@ module Metasploit
 
           @optional_header_type = raw.byteslice(optional_header_offset, 2).unpack('S<').first
 
-          ##
+          #
           #           OPT_MAGIC_PE32  = 0x10B
           #  OPT_MAGIC_PE32P = 0x20B # PE32+ (64-bit)
 
@@ -149,6 +149,39 @@ module Metasploit
           @dos_header[:e_res] = "\x00"*8
           @dos_header[:e_oemid] = 0
           @dos_header[:e_oeminfo] = 0
+        end
+
+
+        def add_section(name, data)
+
+          @file_header[:NumberOfSections] = @file_header[:NumberOfSections]+1
+          @optional_header[:SizeOfImage] = @optional_header[:SizeOfImage] + data.length
+
+          prev_section_size    = @optional_header[:SectionHeaders].last[:SizeOfRawData]
+          prev_section_offset  = @optional_header[:SectionHeaders].last[:PointerToRawData]
+          prev_virtual_size    = @optional_header[:SectionHeaders].last[:VirtualSize]
+          prev_virtual_address = @optional_header[:SectionHeaders].last[:VirtualAddress]
+
+          virtual_size = (data.length / 4096 + 1 ) * 4096
+          virtual_address = prev_virtual_address + (prev_virtual_size / 4096 + 1 ) * 4096
+          size_of_raw_data = data.length
+          pointer_to_raw_data = prev_section_offset + prev_section_size
+
+          @optional_header[:SectionHeaders] << { 
+                      :Name => "#{name}\x00\x00", 
+                      :VirtualSize => virtual_size,
+                      :VirtualAddress => virtual_address ,
+                      :SizeOfRawData => size_of_raw_data,
+                      :PointerToRawData => pointer_to_raw_data,
+                      :PointerToRelocations => 0,
+                      :PointerToLinenumbers => 0,
+                      :NumberOfRelocations => 0,
+                      :NumberOfLinenumbers => 0,
+                      :Characteristics => 3221225536,
+              }
+
+            @sections << { :name => @optional_header[:SectionHeaders].last[:Name].strip, :data => data }
+
         end
 
         def rebuild_pe
@@ -243,19 +276,11 @@ module Metasploit
 
 
         def build
-          # cpu     = Metasm::X86_64.new
-          # headers = Compiler::Headers::Windows.new
-          # source  = Compiler::Utils.normalize_code(c_source, headers)
-          # pe      = Metasm::PE.compile_c(cpu, source)
-          # raw     = pe.encode
-          
-          # Do the magic
-          #----------------
-          patch_dos_header
-#          add_import_section
 
-          #----------------
+          patch_dos_header
+
           new_raw = rebuild_pe
+
           return new_raw
         end
 
