@@ -15,6 +15,7 @@ module Msf::Util::EXE
   include Msf::Util::EXE::Windows::X86
   include Msf::Util::EXE::Windows::X64
   include Msf::Util::EXE::Windows::Aarch64
+
   include Msf::Util::EXE::Linux::X86
   include Msf::Util::EXE::Linux::X64
   include Msf::Util::EXE::Linux::Armle
@@ -110,6 +111,7 @@ module Msf::Util::EXE
         end
         return output
       end
+
       # otherwise the result of this huge case statement is returned
       case fmt
       when 'asp'
