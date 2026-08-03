@@ -148,7 +148,8 @@ module Msf
             # Parse the arguments
             encoder_name = nil
             dynamic_template = nil
-            template_obfuscation = false 
+            encryption_format = nil
+            encryption_key = nil
             sled_size = nil
             pad_nops = nil
             sec_name = nil
@@ -220,10 +221,9 @@ module Msf
             # Add dynamic templates
             if dynamic_template.nil? && mod_with_opts.datastore['EXE::DynamicTemplate']
               dynamic_template = mod_with_opts.datastore['EXE::DynamicTemplate']
-            end
-            
-            if !dynamic_template.nil? && mod_with_opts.datastore['EXE::DynamicTemplate::Obfuscation']
-              template_obfuscation = mod_with_opts.datastore['EXE::DynamicTemplate::Obfuscation']
+              encryption_format = mod_with_opts.datastore['EXE::EncryptionFormat']
+              encryption_key = mod_with_opts.datastore['EXE::EncryptionKey']
+              
             end
 
 
@@ -232,7 +232,8 @@ module Msf
               buf = mod_with_opts.generate_simple(
                 'BadChars' => badchars,
                 'DynamicTemplate' => dynamic_template,
-                'TemplateObfuscation' => template_obfuscation,
+                'EncryptionFormat' => encryption_format,
+                'EncryptionKey' => encryption_key,
                 'Encoder' => encoder_name,
                 'Format' => format,
                 'NopSledSize' => sled_size,

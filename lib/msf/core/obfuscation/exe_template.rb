@@ -4,13 +4,29 @@ require 'metasploit/framework/compiler/pe'
 
 module Msf::Obfuscation::ExeTemplate
   
-  def self.exe_template_x64_pe(framework, code, opts); 
-
-    if opts[:dynamic_obfuscation]
-      source_c = pe_x64_template_obfus(code)
-    else  
-      source_c = pe_x64_template(code)
+  # TODO: rename encryption options to something like EXE::EncryptionFormat, etc, change it to :format and :key here. This keeps the naming convention for encrypt_buffer function and makes it more clear when setting encryption and key for first stage template.
+  def self.apply_encryption(code, opts)
+    
+    case opts[:format]
+      when 'rc4'
+        opts[:key] ||= Rex::Text.rand_text_alpha(32) 
+      when 'xor'
+        opts[:key] ||= Rex::Text.rand_text_alpha(1) 
+      else
     end
+    
+    ::Msf::Simple::Buffer.encrypt_buffer(code, opts) unless opts[:format].nil?
+  end
+
+  def self.exe_template_x64_pe(framework, code, opts); 
+    
+
+    # the idea is to expose encryption_format, encryption_key, encode_format to exe generation
+    # these options will be used to create encryption+encoding for raw payload and then corresponding encoding/encryption template will be used
+    opts[:plaintext_length] = code.length
+    code = apply_encryption(code, opts)
+
+    source_c = pe_x64_template(code, opts)
     
     tmp = Tempfile.new(["payload_win_x64"])
     
@@ -24,7 +40,6 @@ module Msf::Obfuscation::ExeTemplate
     comp_obj = Metasploit::Framework::Compiler::Mingw::X64.new(compile_opts)
     comp_obj.compile_c(source_c)
     File.binread("#{tmp.path}.exe")
-
   end
 
   def self.exe_template_x64_dll(framework, code, opts) 
@@ -49,13 +64,22 @@ module Msf::Obfuscation::ExeTemplate
   def self.dll_x64_template_obfus(code)
   end
 
-  def self.pe_x64_template(code)
+  def self.pe_x64_template(code, opts)
     template_path = File.join(Msf::Config.data_directory, 'templates','src','pe','exe', 'template_x64_windows.erb')
 
     payload_length = code.length
     section_name = "rsc"
     random_sleep = (24000..48000).to_a.sample
     payload = code.bytes.map { |b| '\\x%02x' % b }.join
+
+    case opts[:format]
+      when 'rc4'
+        payload_declaration = %<OBF_STRING_RC4("#{payload}", #{payload_length}, #{opts[:plaintext_length]}, "#{opts[:key]}")>
+      when 'xor'
+        payload_declaration = %<OBF_STRING_XOR("#{payload}", #{payload_length}, "#{opts[:key]}")>
+      else
+        payload_declaration = %<OBF_STRING("#{payload}", #{payload_length})>
+    end
 
     template = ERB.new(File.read(template_path))
     template.result(binding)

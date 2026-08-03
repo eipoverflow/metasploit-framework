@@ -270,12 +270,19 @@ static void obfusheader_decoy_10() { obfusheader_decoy_main(); }
 #define OBF_KEY_NORMAL(x, type, size, key) []() {\
     constexpr static auto result = obf::obfuscator<type, size, key>(x);\
     return result; }() 
+#define OBF_KEY_NORMAL_RC4(x, type, size, plaintext_size, key) []() {\
+    constexpr static auto result = obf::obfuscator_rc4<type, size, plaintext_size>(x, key);\
+    return result; }() 
 #define OBF_KEY_THREADLOCAL(x, type, size, key) []() {\
     constexpr static auto data = obf::obfuscator<type, size, key>(x);\
     thread_local auto decryptor = obf::decryptor<type, size, key>(data);\
     return decryptor; }()
 #define MAKEOBF_NORMAL(x) OBF_KEY_NORMAL(x, obf::clean_type<decltype(obf::gettype(x))>, obf::getsize(x), (char)RND(1, 255))
 #define MAKEOBF_THREADLOCAL(x) OBF_KEY_THREADLOCAL(x, obf::clean_type<decltype(obf::gettype(x))>, obf::getsize(x), (char)RND(1, 255))
+
+#define OBF_STRING_XOR(x, size, key) (OBF_KEY_NORMAL(x, obf::clean_type<decltype(obf::gettype(x))>, size, (char)key))
+
+#define OBF_STRING_RC4(x, size, plaintext_size, key) (OBF_KEY_NORMAL_RC4(x, obf::clean_type<decltype(obf::gettype(x))>, size, plaintext_size, (char*)key))
 
 #define OBF_STRING(x, size) (OBF_KEY_NORMAL(x, obf::clean_type<decltype(obf::gettype(x))>, size, (char)RND(1, 255)))
 
@@ -546,6 +553,41 @@ namespace obf {
 
         bool decrypted = false;
         T m_data[size]{};
+    };    
+
+
+    template <class T, size_t size, size_t payloadsize>
+    class obfuscator_rc4 {
+    public:
+        constexpr obfuscator_rc4(T* data, char * key) {
+            m_key = key;
+            m_data = data;
+        }
+
+        constexpr obfuscator_rc4( T data) {
+            m_data = data;
+        }
+
+        INLINE T* decrypt() {
+            if (!decrypted) {
+                RC4(m_key, m_data, (unsigned char*) m_payload, payloadsize);
+            }
+            decrypted = true;
+            return m_payload;
+        }
+
+        INLINE operator T* () {
+            return decrypt();
+        }
+
+        INLINE operator T () {
+            return decrypt()[0];
+        }
+
+        bool decrypted = false;
+        T * m_data;
+        T m_payload[payloadsize]{};
+        char * m_key;
     };
 
     template <class T, size_t size, char key>

