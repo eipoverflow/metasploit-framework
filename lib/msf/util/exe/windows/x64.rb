@@ -9,7 +9,6 @@ module Msf::Util::EXE::Windows::X64
   end
 
   module ClassMethods
-
     # to_win64pe
     #
     # @param framework  [Msf::Framework]  The framework of you want to use
@@ -17,10 +16,10 @@ module Msf::Util::EXE::Windows::X64
     # @param opts       [Hash]
     # @return           [String]
     def to_win64pe(framework, code, opts = {})
-      # Use the standard template if not specified by the user.
-      # This helper finds the full path and stores it in opts[:template].
       return Msf::Obfuscation::ExeTemplate.exe_template_x64_pe(framework, code, opts) if opts[:dynamic_template]
       
+      # Use the standard template if not specified by the user.
+      # This helper finds the full path and stores it in opts[:template].
       set_template_default(opts, 'template_x64_windows.exe')
       
       # Try to inject code into executable by adding a section without affecting executable behavior
@@ -75,7 +74,6 @@ module Msf::Util::EXE::Windows::X64
     # @option           [Boolen] :dynamic_template
     # @return           [String]
     def to_win64pe_dll(framework, code, opts = {})
-      
       return Msf::Obfuscation::ExeTemplate.exe_template_x64_dll(framework, code, opts) if opts[:dynamic_template]
 
       flavor = opts.fetch(:mixed_mode, false) ? 'mixed_mode' : nil

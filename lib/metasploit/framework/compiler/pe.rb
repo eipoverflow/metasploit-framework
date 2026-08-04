@@ -1,4 +1,6 @@
 # -*- coding: binary -*-
+# TODO: move this into rex library and only take out the parts that are responsible for parsing and rebuilding PE
+
 require 'metasploit/framework/compiler/utils'
 require 'metasploit/framework/compiler/headers/windows'
 require 'rex/peparsey'

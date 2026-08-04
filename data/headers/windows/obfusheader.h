@@ -308,6 +308,7 @@ static void obfusheader_decoy_10() { obfusheader_decoy_main(); }
     #define CALL_EXPORT(mtd, def, ...) RCAST(def, dlsym(RTLD_DEFAULT, OBF(mtd)))(__VA_ARGS__)
 #elif defined(_WINDOWS) && !KERNEL_MODE
     #define CALL_EXPORT(lib, mtd, def, ...) RCAST(def, GetProcAddress(GetModuleHandleA(OBF(lib)), OBF(mtd)))(__VA_ARGS__)
+    #define CALL_EXPORT_X86(lib, mtd, def, ...) RCAST(def, GetProcAddress(GetModuleHandleA(lib), mtd))(__VA_ARGS__)
 #endif
 
 // This was created so the header works without type_traits (on gcc and other compilers)

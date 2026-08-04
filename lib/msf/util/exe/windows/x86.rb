@@ -2,6 +2,7 @@
 module Msf::Util::EXE::Windows::X86
   include Msf::Util::EXE::Common
   include Msf::Util::EXE::Windows::Common
+  include Msf::Obfuscation::ExeTemplate
 
   def self.included(base)
     base.extend(ClassMethods)
@@ -19,6 +20,7 @@ module Msf::Util::EXE::Windows::X86
     # @option opts      [Symbol] :arch, Set to :x86 by default
     # @return           [String]
     def to_win32pe(framework, code, opts = {})
+      return Msf::Obfuscation::ExeTemplate.exe_template_x86_pe(framework, code, opts) if opts[:dynamic_template]
       # For backward compatibility, this is roughly equivalent to 'exe-small' fmt
       if opts[:sub_method]
         if opts[:inject]
@@ -326,6 +328,7 @@ module Msf::Util::EXE::Windows::X86
     # @option           [String] :inject
     # @return           [String]
     def to_win32pe_dll(framework, code, opts = {})
+      return Msf::Obfuscation::ExeTemplate.exe_template_x86_dll(framework, code, opts) if opts[:dynamic_template]
       flavor = opts.fetch(:mixed_mode, false) ? 'mixed_mode' : nil
       set_template_default_winpe_dll(opts, ARCH_X86, code.size, flavor: flavor)
       opts[:exe_type] = :dll
