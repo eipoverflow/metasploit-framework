@@ -41,8 +41,6 @@ module Msf::Obfuscation::ExeTemplate
        }, 'dll')
   end
 
-
-
   private
   
   # TODO: encryption needs to be tested, encryption keys that are set by user needs to be set as well.
@@ -136,7 +134,7 @@ module Msf::Obfuscation::ExeTemplate
   def self.load_template(code,template_path, opts)
 
     payload_length = code.length
-    section_name = "rsc"
+    section_name = "rsc" # TODO: possibly randomize this?
     random_sleep = (24000..48000).to_a.sample
     payload = code.bytes.map { |b| '\\x%02x' % b }.join
 
