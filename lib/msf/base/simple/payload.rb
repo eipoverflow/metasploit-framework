@@ -66,8 +66,8 @@ module Payload
       :secname => opts['SecName'],
       :dynamic_obfuscation => opts['TemplateObfuscation'],
       :dynamic_template => opts['DynamicTemplate'],
-      :format => opts['EncryptionFormat'],
-      :key => opts['EncryptionKey']
+      :encryption_format => opts['EncryptionFormat'],
+      :encryption_key => opts['EncryptionKey']
     }
 
     arch = payload.arch

@@ -4,75 +4,88 @@ require 'metasploit/framework/compiler/pe'
 
 module Msf::Obfuscation::ExeTemplate
   
-  # TODO: rename encryption options to something like EXE::EncryptionFormat, etc, change it to :format and :key here. This keeps the naming convention for encrypt_buffer function and makes it more clear when setting encryption and key for first stage template.
-  def self.apply_encryption(code, opts)
-    
-    case opts[:format]
-      when 'rc4'
-        opts[:key] ||= Rex::Text.rand_text_alpha(32) 
-      when 'xor'
-        opts[:key] ||= Rex::Text.rand_text_alpha(1) 
-      else
-    end
-    
-    ::Msf::Simple::Buffer.encrypt_buffer(code, opts) unless opts[:format].nil?
-  end
-
   def self.exe_template_x64_pe(framework, code, opts); 
     
-
-    # the idea is to expose encryption_format, encryption_key, encode_format to exe generation
-    # these options will be used to create encryption+encoding for raw payload and then corresponding encoding/encryption template will be used
-    opts[:plaintext_length] = code.length
-    code = apply_encryption(code, opts)
-
-    source_c = pe_x64_template(code, opts)
-    
-    tmp = Tempfile.new(["payload_win_x64"])
-    
-    compile_opts = {
-        f_name: tmp.path,
-        cpp_exe:true,
+    compile_template_x64(code, opts,  {
+        is_cpp:true,
         strip_symbols: true,
         compile_options: ' -masm=intel -w -mwindows -lstdc++ -static '
-      }
-    
-    comp_obj = Metasploit::Framework::Compiler::Mingw::X64.new(compile_opts)
-    comp_obj.compile_c(source_c)
-    File.binread("#{tmp.path}.exe")
+      }, 'exe')
   end
 
+  #TODO: for some weird reason, the DLL compiled has pretty visible functions such as PlayDeadForDefender.
+  # This needs to be fixed.
   def self.exe_template_x64_dll(framework, code, opts) 
-    source_c = dll_x64_template(code) 
+    compile_template_x64(code, opts,  {
+         is_cpp:true,
+         is_dll: true,
+         strip_symbols: true,
+         compile_options: ' -masm=intel -w -mwindows -lstdc++ -static -shared '
+       }, 'dll')
 
-    Metasploit::Framework::Compiler::Windows.compile_c(source_c, :dll, Metasm::X86_64.new)
   end
 
   private
+  
+  def self.apply_encryption(code, opts)
+    
+    case opts[:encryption_format]
+      when 'rc4'
+        opts[:encryption_key] ||= Rex::Text.rand_text_alpha(32) 
+      when 'xor'
+        opts[:encryption_key] ||= Rex::Text.rand_text_alpha(1) 
+      else
+    end
+    
+    ::Msf::Simple::Buffer.encrypt_buffer(code, { :format => opts[:encryption_format], :key => opts[:encryption_key] })   
+  end
+  
+  def self.compile_template_x64(code, opts, compile_opts, exe_format)
 
+    opts[:plaintext_length] = code.length
+    
+    code = apply_encryption(code, opts) unless opts[:encryption_format].nil?
+    
+    case exe_format
+      when 'exe'
+        source_c = pe_x64_template(code, opts)
+      when 'dll'
+        source_c = dll_x64_template(code, opts)
+    end
+    
+    tmp = Tempfile.new(["payload_win_x64"])
 
-  def self.dll_x64_template(code)
-    template_path = File.join(Msf::Config.data_directory, 'templates','src','pe','dll', 'template_x64_windows.erb')
+    compile_opts[:f_name] = tmp.path
+    
+    comp_obj = Metasploit::Framework::Compiler::Mingw::X64.new(compile_opts)
 
-    payload_length = code.length
-    payload = code.bytes.map { |b| '\\x%02x' % b }.join
+    compilation_res = comp_obj.compile_c(source_c)
+      
+    unless compilation_res.blank?
+      comp_obj.cleanup_files 
+      raise ::Exception, compilation_res 
+    end
+    
+    case exe_format
+      when 'exe'
+        payload_content = File.binread("#{tmp.path}.exe")
+      when 'dll'
+        payload_content = File.binread("#{tmp.path}.dll")
+    end
 
-    template = ERB.new(File.read(template_path))
-    template.result(binding)
+    comp_obj.cleanup_files 
+    payload_content
   end
 
-  def self.dll_x64_template_obfus(code)
-  end
 
-  def self.pe_x64_template(code, opts)
-    template_path = File.join(Msf::Config.data_directory, 'templates','src','pe','exe', 'template_x64_windows.erb')
+  def self.load_template(code,template_path, opts)
 
     payload_length = code.length
     section_name = "rsc"
     random_sleep = (24000..48000).to_a.sample
     payload = code.bytes.map { |b| '\\x%02x' % b }.join
 
-    case opts[:format]
+    case opts[:encryption_format]
       when 'rc4'
         payload_declaration = %<OBF_STRING_RC4("#{payload}", #{payload_length}, #{opts[:plaintext_length]}, "#{opts[:key]}")>
       when 'xor'
@@ -85,46 +98,15 @@ module Msf::Obfuscation::ExeTemplate
     template.result(binding)
   end
 
-  def self.pe_x64_template_obfus(code)
-    template_path = File.join(Msf::Config.data_directory, 'templates', 'src', 'pe','exe', 'template_x64_windows_xor_mac.erb')
+  def self.dll_x64_template(code, opts)
+    
+    load_template(code, File.join(Msf::Config.data_directory, 'templates','src','pe','dll', 'template_x64_windows.erb'), opts)
 
-    v = build_mac_vars(code)
-    encoded_payload_length = v[:encoded_payload_length]
-
-    payload_length = code.length; 
-    encoded_payload = v[:encoded_payload]
-
-    template = ERB.new(File.read(template_path))
-    template.result(binding)
   end
 
-  def self.build_mac_vars(code)
-    encoded_payload = mac_obfluscate(code)
-    encoded_payload_length = encoded_payload.length
-    encoded_payload = encoded_payload.map { |s| s + "\0" }.join.bytes.map { |b| '\\x%02X' % b }.join
-
-    {
-      encoded_payload_length: encoded_payload_length,
-      encoded_payload: encoded_payload,
-    }
+  def self.pe_x64_template(code, opts)
+    load_template(code, File.join(Msf::Config.data_directory, 'templates','src','pe','exe', 'template_x64_windows.erb'), opts)
   end
 
-  def self.mac_obfluscate(payload)
-    bytes = payload.bytes
-    # Pad to a multiple of 4 bytes
-    remainder = bytes.length % 6
-    bytes += [255] * (6 - remainder) if remainder != 0
-
-    # add buffer string because metasm likes to mess up end of array of strings for some reason
-    bytes += [255] * 6
-
-    chunks = []
-    i = 0
-    bytes.each_slice(6) do |quad|
-      chunks << quad.map { |b| format('%02X', b) }.join('-')
-      i += 1
-    end
-    chunks
-  end
 
 end

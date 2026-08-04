@@ -75,6 +75,9 @@ module Msf::Util::EXE::Windows::X64
     # @option           [Boolen] :dynamic_template
     # @return           [String]
     def to_win64pe_dll(framework, code, opts = {})
+      
+      return Msf::Obfuscation::ExeTemplate.exe_template_x64_dll(framework, code, opts) if opts[:dynamic_template]
+
       flavor = opts.fetch(:mixed_mode, false) ? 'mixed_mode' : nil
       set_template_default_winpe_dll(opts, ARCH_X64, code.size, flavor: flavor)
 

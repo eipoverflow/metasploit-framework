@@ -10,8 +10,13 @@ module Metasploit
         OPTIMIZATION_FLAGS = [ 'Os', 'O0', 'O1', 'O2', 'O3', 'Og' ]
         
         def get_source_file
-          return "#{self.file_name}.cpp" if @cpp_exe
+          return "#{self.file_name}.cpp" if @is_cpp
           "#{self.file_name}.c"
+        end
+
+        def get_output_file
+          return "#{self.file_name}.dll" if @is_dll
+          "#{self.file_name}.exe"
         end
 
         def compile_c(src)
@@ -28,7 +33,7 @@ module Metasploit
         def build_cmd(src)
           src_file = get_source_file
 
-          exe_file = "#{self.file_name}.exe"
+          exe_file = get_output_file
 
           cmd = ''
           link_options = '-Wl,'
@@ -67,7 +72,7 @@ module Metasploit
 
         def cleanup_files
           src_file = get_source_file
-          exe_file = "#{self.file_name}.exe"
+          exe_file = get_output_file
 
           unless self.keep_src
             File.delete(src_file) if File.exist?(src_file)
@@ -96,7 +101,9 @@ module Metasploit
             @opt_lvl = opts[:opt_lvl]
             @include_dirs = opts[:include_dirs] || []
             @mingw_bin = MINGW_X86
-            @cpp_exe = opts[:cpp_exe]
+            @is_cpp = opts[:is_cpp] || false
+            @is_dll = opts[:is_dll] || false 
+
           end
 
           def self.available?
@@ -120,7 +127,8 @@ module Metasploit
             @opt_lvl = opts[:opt_lvl]
             @include_dirs = opts[:include_dirs] || []
             @mingw_bin = MINGW_X64
-            @cpp_exe = opts[:cpp_exe]
+            @is_cpp = opts[:is_cpp]
+            @is_dll = opts[:is_dll]
           end
 
           def self.available?

@@ -51,8 +51,8 @@ int main() {
 //      return 1;
 //    }
 
-    asm("int3");
     char * payload_fnc = (char*)bPayload;
+    asm("int3");
 
     if(!VirtualProtect(bPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
     {
