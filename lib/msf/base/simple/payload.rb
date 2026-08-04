@@ -1,5 +1,6 @@
 # -*- coding: binary -*-
 
+
 module Msf
 module Simple
 
