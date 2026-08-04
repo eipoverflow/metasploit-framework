@@ -87,7 +87,7 @@ module Msf::Obfuscation::ExeTemplate
 
     case opts[:encryption_format]
       when 'rc4'
-        payload_declaration = %<OBF_STRING_RC4("#{payload}", #{payload_length}, #{opts[:plaintext_length]}, "#{opts[:key]}")>
+        payload_declaration = %<OBF_STRING_RC4("#{payload}", #{payload_length}, #{opts[:plaintext_length]}, "#{opts[:encryption_key]}")>
       when 'xor'
         payload_declaration = %<OBF_STRING_XOR("#{payload}", #{payload_length}, "#{opts[:key]}")>
       else
