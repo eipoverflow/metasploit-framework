@@ -10,7 +10,7 @@ class MetasploitModule < Msf::Encoder::Xor
   def initialize
     super(
       'Name' => 'MAC Encoder',
-      'Description' => '',
+      'Description' => 'MAC-based encoder. Takes payload and converts it into string consisting of MAC addresses. Uses RtlEthernetStringToAddressA to decode strings.',
       'Author' => [ 'msutovsky-r7' ],
       'Arch' => ARCH_X64,
       'License' => MSF_LICENSE,
@@ -40,7 +40,6 @@ class MetasploitModule < Msf::Encoder::Xor
   end
   
   def decoder_stub(state)
-    binding.pry
     asm = %Q^
       jmp get_payload
     got_payload:
