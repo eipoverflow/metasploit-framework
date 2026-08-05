@@ -152,7 +152,7 @@ module Msf
           OptString.new('WORKSPACE', [ false, "Specify the workspace for this module" ]),
           OptBool.new('VERBOSE',     [ false, 'Enable detailed status messages', false ]),
           OptBool.new('EXE::DynamicTemplate', [false, 'Use dynamic template when generating the executable', false]),
-          OptString.new('EXE::EncryptionFormat', [false, '', nil]),
+          OptEnum.new('EXE::EncryptionFormat', [false, '', 'none', ['none', 'rc4','xor']]),
           OptString.new('EXE::EncryptionKey', [false, '', nil])
         ], Msf::Module)
 

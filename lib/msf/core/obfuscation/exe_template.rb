@@ -50,7 +50,8 @@ module Msf::Obfuscation::ExeTemplate
         opts[:encryption_key] ||= Rex::Text.rand_text_alpha(32) 
       when 'xor'
         opts[:encryption_key] ||= Rex::Text.rand_text_alpha(1) 
-      else
+      when 'none'
+        return code
     end
     
     ::Msf::Simple::Buffer.encrypt_buffer(code, { :format => opts[:encryption_format], :key => opts[:encryption_key] })   
@@ -60,7 +61,7 @@ module Msf::Obfuscation::ExeTemplate
 
     opts[:plaintext_length] = code.length
     
-    code = apply_encryption(code, opts) unless opts[:encryption_format].nil?
+    code = apply_encryption(code, opts)
     
     case exe_format
       when 'exe'
@@ -130,7 +131,6 @@ module Msf::Obfuscation::ExeTemplate
     payload_content
   end
 
-
   def self.load_template(code,template_path, opts)
 
     payload_length = code.length
@@ -143,7 +143,7 @@ module Msf::Obfuscation::ExeTemplate
         payload_declaration = %<OBF_STRING_RC4("#{payload}", #{payload_length}, #{opts[:plaintext_length]}, "#{opts[:encryption_key]}")>
       when 'xor'
         payload_declaration = %<OBF_STRING_XOR("#{payload}", #{payload_length}, "#{opts[:key]}")>
-      else
+      when 'none' #TODO: consider not using obfuscation when encryption set to none? But why we would do that though?
         payload_declaration = %<OBF_STRING("#{payload}", #{payload_length})>
     end
 
