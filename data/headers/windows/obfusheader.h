@@ -270,8 +270,14 @@ static void obfusheader_decoy_10() { obfusheader_decoy_main(); }
 #define OBF_KEY_NORMAL(x, type, size, key) []() {\
     constexpr static auto result = obf::obfuscator<type, size, key>(x);\
     return result; }() 
+#define OBF_KEY_NORMAL_XOR(x, type, size, key) []() {\
+    constexpr static auto result = obf::obfuscator_xor<type, size, key>(x);\
+    return result; }() 
 #define OBF_KEY_NORMAL_RC4(x, type, size, plaintext_size, key) []() {\
     constexpr static auto result = obf::obfuscator_rc4<type, size, plaintext_size>(x, key);\
+    return result; }() 
+#define OBF_KEY_NORMAL_NONE(x, type, size) []() {\
+    constexpr static auto result = obf::obfuscator_none<type, size>(x);\
     return result; }() 
 #define OBF_KEY_THREADLOCAL(x, type, size, key) []() {\
     constexpr static auto data = obf::obfuscator<type, size, key>(x);\
@@ -280,9 +286,11 @@ static void obfusheader_decoy_10() { obfusheader_decoy_main(); }
 #define MAKEOBF_NORMAL(x) OBF_KEY_NORMAL(x, obf::clean_type<decltype(obf::gettype(x))>, obf::getsize(x), (char)RND(1, 255))
 #define MAKEOBF_THREADLOCAL(x) OBF_KEY_THREADLOCAL(x, obf::clean_type<decltype(obf::gettype(x))>, obf::getsize(x), (char)RND(1, 255))
 
-#define OBF_STRING_XOR(x, size, key) (OBF_KEY_NORMAL(x, obf::clean_type<decltype(obf::gettype(x))>, size, (char)key))
+#define OBF_STRING_XOR(x, size, key) (OBF_KEY_NORMAL_XOR(x, obf::clean_type<decltype(obf::gettype(x))>, size, (char)key))
 
 #define OBF_STRING_RC4(x, size, plaintext_size, key) (OBF_KEY_NORMAL_RC4(x, obf::clean_type<decltype(obf::gettype(x))>, size, plaintext_size, (char*)key))
+
+#define OBF_STRING_NONE(x, size) (OBF_KEY_NORMAL_NONE(x, obf::clean_type<decltype(obf::gettype(x))>, size))
 
 #define OBF_STRING(x, size) (OBF_KEY_NORMAL(x, obf::clean_type<decltype(obf::gettype(x))>, size, (char)RND(1, 255)))
 
@@ -497,6 +505,34 @@ namespace obf {
 
     // Decryption with control flow to confuse IDA/GHIDRA
     template <class T, char key, size_t size>
+    INLINE void xord_custom(T* data) {
+        #if CFLOW_CONST_DECRYPTION
+        for (volatile int i = 0; i < size; i++) {
+            BLOCK_FALSE(
+                data[i] = XOR(data[i], int_proxy(key + 1));
+            )
+            BLOCK_TRUE(
+                BLOCK_FALSE(
+                    data[i] = XOR(data[i], int_proxy(key + 2));
+                );
+                BLOCK_FALSE(
+                    data[i] = XOR(data[i], int_proxy(key + 3));
+                );
+                BLOCK_TRUE(
+                    data[i] = XOR(data[i], CAST(T, int_proxy(key))); // real
+                )
+            )
+            BLOCK_FALSE(
+                data[i] = XOR(data[i], int_proxy(key + 4));
+            )
+        }
+        #else
+        for (volatile int i = 0; i < size; i++)
+            data[i] = data[i] ^ CAST(T, key); // no cflow (optimized+unsafe)
+        #endif
+    }
+    
+    template <class T, char key, size_t size>
     INLINE void xord(T* data) {
         #if CFLOW_CONST_DECRYPTION
         for (volatile int i = 0; i < size; i++) {
@@ -511,7 +547,7 @@ namespace obf {
                     data[i] = XOR(data[i], int_proxy(key + 3));
                 );
                 BLOCK_TRUE(
-                    data[i] = XOR(data[i], CAST(T, int_proxy(key + i))); // real
+                    data[i] = XOR(data[i], CAST(T, int_proxy(key+i))); // real
                 )
             )
             BLOCK_FALSE(
@@ -520,16 +556,48 @@ namespace obf {
         }
         #else
         for (volatile int i = 0; i < size; i++)
-            data[i] = data[i] ^ CAST(T, key + i); // no cflow (optimized+unsafe)
+            data[i] = data[i] ^ CAST(T, key+i); // no cflow (optimized+unsafe)
         #endif
     }
+    
+    template <class T, size_t size, char key>
+    class obfuscator_xor {
+    public:
+        constexpr obfuscator_xor(const T* data) {
+            for (int i = 0; i < size; i++)
+                m_data[i] = data[i];
+        }
+
+        constexpr obfuscator_xor(const T data) {
+            m_data[0] = data;
+        }
+
+        INLINE T* decrypt() {
+            if (!decrypted) {
+                xord_custom<T, key, size>(m_data);
+            }
+            decrypted = true;
+            return m_data;
+        }
+
+        INLINE operator T* () {
+            return decrypt();
+        }
+
+        INLINE operator T () {
+            return decrypt()[0];
+        }
+
+        bool decrypted = false;
+        T m_data[size]{};
+    };    
 
     template <class T, size_t size, char key>
     class obfuscator {
     public:
         constexpr obfuscator(const T* data) {
             for (int i = 0; i < size; i++)
-                m_data[i] = data[i] ^ CAST(T, key + i);
+                m_data[i] = data[i] ^ CAST(T, key+i);
         }
 
         constexpr obfuscator(const T data) {
@@ -553,6 +621,33 @@ namespace obf {
         }
 
         bool decrypted = false;
+        T m_data[size]{};
+    };    
+    
+    template <class T, size_t size>
+    class obfuscator_none {
+    public:
+        constexpr obfuscator_none(const T* data) {
+            for (int i = 0; i < size; i++)
+                m_data[i] = data[i];
+        }
+
+        constexpr obfuscator_none(const T data) {
+            m_data[0] = data;
+        }
+
+        INLINE T* decrypt() {
+            return m_data;
+        }
+
+        INLINE operator T* () {
+            return decrypt();
+        }
+
+        INLINE operator T () {
+            return decrypt()[0];
+        }
+
         T m_data[size]{};
     };    
 

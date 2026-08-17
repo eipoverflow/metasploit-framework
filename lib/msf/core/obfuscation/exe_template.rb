@@ -53,6 +53,10 @@ module Msf::Obfuscation::ExeTemplate
       when 'none'
         return code
     end
+
+    raise ArgumentError, 'The XOR encryption requires single character as key' if opts[:encryption_format] == 'xor' && opts[:encryption_key].length != 1
+
+    raise ArgumentError, 'The RC4 encryption requires 32-character string as key' if opts[:encryption_format] == 'rc4' && opts[:encryption_key].length != 32
     
     ::Msf::Simple::Buffer.encrypt_buffer(code, { :format => opts[:encryption_format], :key => opts[:encryption_key] })   
   end
@@ -142,9 +146,9 @@ module Msf::Obfuscation::ExeTemplate
       when 'rc4'
         payload_declaration = %<OBF_STRING_RC4("#{payload}", #{payload_length}, #{opts[:plaintext_length]}, "#{opts[:encryption_key]}")>
       when 'xor'
-        payload_declaration = %<OBF_STRING_XOR("#{payload}", #{payload_length}, "#{opts[:key]}")>
-      when 'none' #TODO: consider not using obfuscation when encryption set to none? But why we would do that though?
-        payload_declaration = %<OBF_STRING("#{payload}", #{payload_length})>
+        payload_declaration = %<OBF_STRING_XOR("#{payload}", #{payload_length}, #{opts[:encryption_key].ord})>
+      when 'none' 
+        payload_declaration = %<OBF_STRING_NONE("#{payload}", #{payload_length})>
     end
 
     template = ERB.new(File.read(template_path))

