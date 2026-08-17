@@ -134,7 +134,7 @@ module Msf::Obfuscation::ExeTemplate
   def self.load_template(code,template_path, opts)
 
     payload_length = code.length
-    section_name = "rsc" # TODO: possibly randomize this?
+    section_name = ".rsc" # TODO: possibly randomize this?
     random_sleep = (24000..48000).to_a.sample
     payload = code.bytes.map { |b| '\\x%02x' % b }.join
 

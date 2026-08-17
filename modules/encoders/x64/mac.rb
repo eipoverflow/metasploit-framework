@@ -51,9 +51,9 @@ class MetasploitModule < Msf::Encoder::Xor
 
       mov r9d,0x40                    ; PAGE_EXECUTE_READ_WRITE
       mov r8d,0x00103000              ; MEM_COMMIT | MEM_TOP_DOWN | MEM_RESERVE
-      mov rdx,#{state.orig_buf.length}; dwSize
+      mov rdx, #{state.orig_buf.length}; dwSize
       xor rcx,rcx                     ; lpAddress
-      mov r10d,#{block_api_hash('kernel32.dll', 'VirtualAlloc')}
+      mov r10d, #{block_api_hash('kernel32.dll', 'VirtualAlloc')}
       call rbp
 
       push rsp 

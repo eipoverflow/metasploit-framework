@@ -559,6 +559,7 @@ namespace obf {
 
     template <class T, size_t size, size_t payloadsize>
     class obfuscator_rc4 {
+
     public:
         constexpr obfuscator_rc4(T* data, char * key) {
             m_key = key;
