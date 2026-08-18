@@ -12,14 +12,12 @@ module Msf::Obfuscation::ExeTemplate
       }, 'exe')
   end
 
-  #TODO: for some weird reason, the DLL compiled has pretty visible functions such as PlayDeadForDefender.
-  # This needs to be fixed.
   def self.exe_template_x64_dll(framework, code, opts) 
     compile_template_x64(code, opts,  {
          is_cpp: true,
          is_dll: true,
          strip_symbols: true,
-         compile_options: ' -masm=intel -w -mwindows -lstdc++ -static -shared '
+         compile_options: ' -masm=intel -w -mwindows -lstdc++ -static -shared -Wl,--exclude-all-symbols '
        }, 'dll')
   end
   
@@ -31,19 +29,17 @@ module Msf::Obfuscation::ExeTemplate
       }, 'exe')
   end
 
-  #TODO: x86 DLL needs to be tested
   def self.exe_template_x86_dll(framework, code, opts) 
     compile_template_x86(code, opts,  {
          is_cpp: true,
          is_dll: true,
          strip_symbols: true,
-         compile_options: ' -masm=intel -w -mwindows -lstdc++ -static -shared '
+         compile_options: ' -masm=intel -w -mwindows -lstdc++ -static -shared -Wl,--exclude-all-symbols '
        }, 'dll')
   end
 
   private
   
-  # TODO: encryption needs to be tested, encryption keys that are set by user needs to be set as well.
   def self.apply_encryption(code, opts)
     case opts[:encryption_format]
       when 'rc4'

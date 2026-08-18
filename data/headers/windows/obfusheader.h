@@ -773,6 +773,13 @@ namespace obf {
 #pragma region MODULES
 #if INLINE_STD
 
+    INLINE void inline_bzero(void *p, size_t l)
+    {
+      byte *q = (byte *)p;
+      size_t x = 0;
+      for (x = 0; x < l; x++)
+        *(q++) = 0x00;
+    }
     static INLINE void inline_strcpy(char* dest,
         const char* src) {
         while ((*dest++ = *src++));
