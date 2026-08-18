@@ -65,7 +65,6 @@ module Payload
       :template => opts['Template'],
       :template_path => opts['ExeDir'],
       :secname => opts['SecName'],
-      :dynamic_obfuscation => opts['TemplateObfuscation'],
       :dynamic_template => opts['DynamicTemplate'],
       :encryption_format => opts['EncryptionFormat'],
       :encryption_key => opts['EncryptionKey']
